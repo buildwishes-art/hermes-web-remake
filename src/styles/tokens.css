@@ -1,0 +1,245 @@
+/**
+ * Quiet Violet — design tokens.
+ *
+ * Standalone by design: no @import, no Tailwind directive, no framework
+ * coupling. Drop this one file into any app and the surface comes with it.
+ * The Electron app (`apps/desktop`) is the intended second consumer.
+ *
+ * These values are measured from the operator's `open-claude` reference app
+ * via getComputedStyle, not eyeballed. This file is the single source of
+ * truth: the theme system that once held a second, TypeScript copy of the
+ * palette has been removed, so there is nothing left to drift against.
+ * `styles/tokens.test.ts` still guards the contrast floors.
+ *
+ * Contrast, computed against the surface each colour is actually used on:
+ *   text-primary   on bg-primary    15.62:1   AAA
+ *   text-primary   on bg-secondary  14.23:1   AAA
+ *   text-secondary on bg-secondary   7.08:1   AAA
+ *   text-tertiary  on bg-secondary   4.04:1   large text / metadata ONLY
+ *   accent         on bg-secondary   6.23:1   AA
+ *   border-strong  on bg-secondary   3.41:1   AA for control boundaries
+ */
+
+:root {
+  /* ---- Surfaces ------------------------------------------------------- */
+  --bg-primary: #14111e;
+  --bg-secondary: #1e1a2c;
+  --bg-tertiary: #29233b;
+  --bg-hover: #322b47;
+
+  /* ---- Text ----------------------------------------------------------- */
+  --text-primary: #eceaf3;
+  --text-secondary: #aba4bd;
+  /* 4.04:1 — timestamps, counts, disabled labels. Never placeholders, never
+     prose. Placeholder text uses --text-secondary. */
+  --text-tertiary: #7f7893;
+
+  /* ---- Accent --------------------------------------------------------- */
+  --accent: #a78bfa;
+  --accent-hover: #8b5cf6;
+
+  /* ---- Boundaries ----------------------------------------------------- */
+  /* Decorative: card and panel edges. 1.32:1 — deliberately quiet, and
+     acceptable because the background step already carries the grouping. */
+  --border: #342e49;
+  /* Functional: inputs, selects, checkboxes — anywhere the outline IS the
+     affordance. Clears WCAG 2.2 SC 1.4.11 (3:1) on every surface. */
+  --border-strong: #7468a0;
+  /* Dividers inside a single surface. */
+  --border-light: #241f33;
+
+  /* ---- Semantic state ------------------------------------------------- */
+  /* Each pairs with an icon or label — colour never carries meaning alone. */
+  --success: #6ee7b7;
+  --warning: #fcd34d;
+  --danger: #fb7185;
+
+  /* Data series. Input and output alias palette tokens (index.css); these two
+     are their own values because four categorical series need four hues, and
+     lightness steps within one hue stop being tellable apart. They carry no
+     meaning alone — every chart that uses them ships a labelled legend. */
+  --series-cache-token: #60a5fa;
+  --series-reasoning-token: #c084fc;
+  --info: var(--accent);
+
+  /* ---- Elevation ------------------------------------------------------ */
+  /* Depth is carried by background step and border. Shadow appears only on
+     surfaces that genuinely float: dropdowns, popovers, modals. */
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 16px rgb(0 0 0 / 0.4);
+
+  /* ---- Radii ---------------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* ---- Typography ----------------------------------------------------- */
+  /* No webfont fetch: this dashboard is loopback-only and often offline.
+     "Inter" is used when locally installed; the platform UI face otherwise. */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI Variable Text",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono",
+    Menlo, Consolas, monospace;
+  /* Page titles and the greeting only — never labels, buttons or data. */
+  --font-display: Georgia, "Tiempos Text", "Times New Roman", serif;
+
+  --text-size-display: 30px;
+  --text-size-lg: 18px;
+  --text-size-base: 15px;
+  --text-size-sm: 14px;
+  --text-size-xs: 13px;
+
+  --line-height-base: 1.55;
+  --letter-spacing-base: 0;
+
+  /* ---- Spacing -------------------------------------------------------- */
+  /* Rhythm is deliberately uneven: 24 between peers, 48 between sections, so
+     grouping reads without rules or boxes. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* ---- Shell ---------------------------------------------------------- */
+  --rail-width: 52px;
+  --rail-width-expanded: 220px;
+  --content-max: 860px;
+  /* Data-heavy surfaces (logs, analytics, wide tables) opt into this.
+     Nothing else may. */
+  --content-max-wide: 1280px;
+
+  /* ---- Motion --------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+
+  /* ---- Z-index -------------------------------------------------------- */
+  /* Semantic scale. Never an arbitrary 999.
+     These are the values the app actually stacks at, not an idealised ladder.
+     The previous 10/20/30/40/50/60/70 set was never adopted — every modal
+     reached for a bare z-[100] instead — and renumbering to it now would
+     regress real layering: page-local decoration already sits on z-10/20/30/40
+     inside the content column, so a dropdown demoted to 10 would slide under
+     the z-20 element on the Models page. Values kept, names added. */
+  --z-sticky: 20;
+  /* Dropdowns and the sidebar share a layer: both sit above page content and
+     neither can be open over the other. */
+  --z-dropdown: 50;
+  --z-drawer: 50;
+  --z-modal-backdrop: 100;
+  --z-modal: 100;
+  --z-toast: 100;
+  /* A confirm has to outrank the modal that opened it. This tier is the one
+     the old scale had no room for, which is why 12 files bypassed it. */
+  --z-alert: 200;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --text-size-display: 36px;
+  }
+}
+
+/* Travel is dropped, not motion as a whole: an instant snap reads as a bug.
+   Content is never gated behind a transition — a reveal that does not fire
+   would ship a blank page. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 100ms;
+    --duration-base: 100ms;
+  }
+}
+
+/* ---- Light -----------------------------------------------------------
+   The dark palette above is the default. These two blocks carry the light
+   one, and they must stay byte-identical: a media query cannot be folded
+   into a selector list, so the values are written twice on purpose.
+   `tokens.test.ts` diffs them, which is what stops the copies drifting.
+
+   One hue, not two. Everything here sits at 303 degrees — the hue of
+   #FFDBFD — within a 2.9 degree spread, so the page, the cards, the selected
+   pills and the borders read as one family. The earlier pairing put the
+   surfaces 53 degrees apart, which is far enough that the eye reads two
+   colours arguing rather than one surface stepping.
+
+   "Faded" is carried by chroma, not by lightness: saturation runs 37-42%
+   against the seed's 100%. Dropping lightness instead would have made a grey
+   pink; dropping chroma keeps the hue and takes the glare out of it.
+
+   Surfaces deepen as they rise, which is the ordinary light-mode direction,
+   and the four are spaced an even 1.09-1.10:1 so each elevation reads. Text
+   clears 4.5:1 everywhere with margin to spare (10.3:1 at worst),
+   `--border-strong` clears the 3:1 non-text floor (SC 1.4.11) on all four,
+   and the accent stays violet on purpose — an accent that shares the surface
+   hue stops being an accent.
+*/
+
+/* An explicit choice wins over the OS. */
+:root[data-theme="light"] {
+  --bg-primary: #efdcee;
+  --bg-secondary: #ebd1e9;
+  --bg-tertiary: #e7c5e6;
+  --bg-hover: #e3bae1;
+
+  --text-primary: #1b1630;
+  --text-secondary: #453d5e;
+  --text-tertiary: #6a6187;
+
+  --accent: #5b21b6;
+  --accent-hover: #4c1d95;
+
+  --border: #d8b6d6;
+  --border-strong: #8a6088;
+  --border-light: #dfc3dd;
+
+  --success: #065f46;
+  --warning: #7c4a03;
+  --danger: #9f1239;
+
+  /* Tuned down for a light ground: the dark pair are 400-weights and wash out.
+     4.73:1 and 4.93:1 on --bg-secondary. */
+  --series-cache-token: #1d4ed8;
+  --series-reasoning-token: #7e22ce;
+
+  /* Shadows on a light ground need less opacity or they read as smudges. */
+  --shadow: 0 1px 2px rgb(28 24 48 / 0.08);
+  --shadow-md: 0 4px 16px rgb(28 24 48 / 0.12);
+}
+
+/* "System" stamps nothing, so it lands here — but never overrides an
+   explicit dark choice. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]):not([data-theme="light"]) {
+    --bg-primary: #efdcee;
+    --bg-secondary: #ebd1e9;
+    --bg-tertiary: #e7c5e6;
+    --bg-hover: #e3bae1;
+
+    --text-primary: #1b1630;
+    --text-secondary: #453d5e;
+    --text-tertiary: #6a6187;
+
+    --accent: #5b21b6;
+    --accent-hover: #4c1d95;
+
+    --border: #d8b6d6;
+    --border-strong: #8a6088;
+    --border-light: #dfc3dd;
+
+    --success: #065f46;
+    --warning: #7c4a03;
+    --danger: #9f1239;
+
+    /* Tuned down for a light ground: the dark pair are 400-weights and wash out.
+       4.73:1 and 4.93:1 on --bg-secondary. */
+    --series-cache-token: #1d4ed8;
+    --series-reasoning-token: #7e22ce;
+
+    --shadow: 0 1px 2px rgb(28 24 48 / 0.08);
+    --shadow-md: 0 4px 16px rgb(28 24 48 / 0.12);
+  }
+}

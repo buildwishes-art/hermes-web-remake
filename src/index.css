@@ -1,0 +1,570 @@
+@import 'tailwindcss';
+/* `fonts.css` must come BEFORE `globals.css`: as of @nous-research/ui 0.14.x,
+   `globals.css` only declares the `--font-*` CSS variables (Collapse, Rules
+   Compressed/Expanded, Mondwest). The `@font-face` registrations live in
+   `fonts.css`, so without this import the DS variables resolve to font
+   families the browser never loads and components fall back to a system
+   stack (Tabs, Segmented, Typography, Buttons, etc. all look unstyled). */
+@import '@nous-research/ui/styles/fonts.css';
+@import '@nous-research/ui/styles/globals.css';
+
+/* Quiet Violet design tokens. Declares `--bg-*`, `--text-*`, `--accent`,
+   spacing, radii and the z-index scale as plain custom properties — it does
+   not override anything the DS owns, so import order against the DS is not
+   load-bearing. Kept in its own file with no imports of its own so
+   `apps/desktop` can adopt the same surface by copying one file.
+   `tokens.css` is now the single source of truth for these values —
+   there is no TypeScript copy left to drift against. */
+@import './styles/tokens.css';
+
+/* Scan the published design-system bundle so its utility classes survive
+   Tailwind's JIT purge. */
+@source '../node_modules/@nous-research/ui/dist';
+
+/* ------------------------------------------------------------------ */
+/* JetBrains Mono — bundled for the embedded TUI (/chat tab).          */
+/* Gives the terminal a proper monospace font even on systems where    */
+/* the user doesn't have one installed locally; xterm.js picks it up   */
+/* via ChatPage's `fontFamily` option.                                 */
+/* Apache-2.0.                                                         */
+/* ------------------------------------------------------------------ */
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts-terminal/JetBrainsMono-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts-terminal/JetBrainsMono-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts-terminal/JetBrainsMono-Italic.woff2') format('woff2');
+}
+
+/* ------------------------------------------------------------------ */
+/* Hermes Agent — the Quiet Violet surface, applied statically.        */
+/* There is no theme system: these values do not change at runtime.    */
+/* ------------------------------------------------------------------ */
+
+:root {
+  /* Quiet Violet — the dashboard's one and only surface.
+     There is no ThemeProvider any more: these values are static, and
+     `styles/tokens.css` above is where they come from. The three-layer
+     foreground/midground/background model is kept because the Nous DS
+     components read it directly (`text-midground`, `bg-background`). */
+  --foreground: color-mix(in srgb, #ffffff 0%, transparent);
+  /* Literals here would pin the shell to the dark palette: the Nous
+     utilities read the `-base` variants, so these must follow the
+     tokens or light mode repaints the content and not the chrome. */
+  --foreground-base: var(--text-primary);
+  --foreground-alpha: 0;
+  --midground: var(--text-primary);
+  --midground-base: var(--text-primary);
+  --midground-alpha: 1;
+  --background: var(--bg-primary);
+  --background-base: var(--bg-primary);
+  --background-alpha: 1;
+
+  /* Typography. `--theme-font-*` names are kept: index.css is the only
+     remaining consumer, and renaming them would churn the DS utility
+     mappings below for no gain.
+
+     Literal stacks, NOT `var(--font-sans)`. The `@theme inline` block below
+     defines `--font-sans: var(--theme-font-sans)`; pointing back at it from
+     here would close a reference cycle and drop both to the browser default.
+     Keep these in step with `styles/tokens.css` — `styles/tokens.test.ts`
+     checks that they agree. */
+  --theme-font-sans: "Inter", system-ui, -apple-system, "Segoe UI Variable Text",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --theme-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono",
+    Menlo, Consolas, monospace;
+  --theme-font-display: Georgia, "Tiempos Text", "Times New Roman", serif;
+  --theme-base-size: 15px;
+  --theme-line-height: 1.55;
+  --theme-letter-spacing: 0;
+
+  /* Layout tokens. */
+  --radius: 0.5rem;
+  --theme-radius: 0.5rem;
+  --theme-spacing-mul: 1;
+  --theme-density: comfortable;
+
+  /* Read by ChatPage / HermesConsoleModal for the embedded xterm pane.
+     Also exported from `styles/terminal.ts` for the JS side. */
+  --theme-terminal-background: var(--bg-primary);
+  --theme-terminal-foreground: var(--text-primary);
+
+  /* Data-series accents — consumed by Analytics + Models pages for the
+     input-vs-output token visualisations (chart bars, table values,
+     legend swatches). A muted/violet pair rather than cream/emerald, so
+     the charts sit inside the palette instead of on top of it. Both clear
+     4.5:1 on the surfaces they land on. */
+  --series-input-token: var(--text-secondary);
+  --series-output-token: var(--accent);
+}
+
+/* Theme tokens cascade into the document root so every descendant inherits
+   the font stack, base size, and letter spacing without explicit calls. */
+html {
+  font-family: var(--theme-font-sans);
+  font-size: var(--theme-base-size);
+  line-height: var(--theme-line-height);
+  letter-spacing: var(--theme-letter-spacing);
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--theme-font-sans);
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+code, kbd, pre, samp, .font-mono, .font-mono-ui {
+  font-family: var(--theme-font-mono);
+}
+
+/* Density: scale the shadcn spacing utilities via a multiplier. The DS
+   components use `p-N` / `gap-N` / `space-*` classes which resolve against
+   Tailwind's spacing scale; multiplying `--spacing` at :root scales them
+   all proportionally in Tailwind v4. */
+@theme inline {
+  --spacing: calc(0.25rem * var(--theme-spacing-mul, 1));
+  --font-sans: var(--theme-font-sans);
+  --font-mono: var(--theme-font-mono);
+  /* Registered here, not just on `:root`, because Tailwind v4 generates the
+     `font-*` utilities from `@theme` variables — a `--font-display` declared
+     only on `:root` gives you the custom property but no `.font-display`
+     class, which fails silently as "the serif didn't apply". */
+  --font-display: var(--theme-font-display);
+}
+
+#root {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+    height: auto;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
+/* Nousnet's hermes-agent layout bumps `small` and `code` to readable
+   dashboard sizes. Keep in sync. */
+small { font-size: 1.0625rem; }
+code { font-size: 0.875rem; }
+
+/* Shadcn-compat tokens.
+   The dashboard's page code predates the Nous DS and uses shadcn-style
+   utility classes (bg-card, text-muted-foreground, border-border, etc.)
+   extensively. Rather than rewrite every call site, we expose those
+   tokens on top of the Nous palette so classes continue to resolve. */
+@theme inline {
+  /* Remap foreground to midground so `text-foreground` / `bg-foreground`
+     stay visible — in LENS_0, `--foreground` itself has alpha 0. */
+  --color-foreground: var(--midground);
+
+  /* Explicit values, not `color-mix` percentages of midground over
+     background. The derived shades land near the reference but not on it,
+     and "near" is exactly what makes a port read as an imitation.
+
+     Two shadcn naming traps, stated because getting either backwards is
+     invisible in a diff and obvious on screen:
+       - `accent` is the HOVER SURFACE, not the brand colour.
+       - `primary` is the brand colour.
+       - `input` is the control BORDER, not the field's fill. */
+  --color-card: var(--bg-secondary);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--bg-secondary);
+  --color-popover-foreground: var(--text-primary);
+
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--bg-primary);
+
+  --color-secondary: var(--bg-tertiary);
+  --color-secondary-foreground: var(--text-primary);
+
+  --color-muted: var(--bg-tertiary);
+  --color-muted-foreground: var(--text-secondary);
+
+  --color-accent: var(--bg-hover);
+  --color-accent-foreground: var(--text-primary);
+
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--bg-primary);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  /* Decorative card edge vs. the control boundary that has to clear
+     WCAG 1.4.11 (3:1). See the note in tokens.css. */
+  --color-border: var(--border);
+  --color-input: var(--border-strong);
+  --color-ring: var(--accent);
+
+  --radius-sm: calc(var(--theme-radius) - 4px);
+  --radius-md: calc(var(--theme-radius) - 2px);
+  --radius-lg: var(--theme-radius);
+  --radius-xl: calc(var(--theme-radius) + 4px);
+}
+
+
+/* Collapsed sidebar tooltip entrance — skipped when moving between items. */
+@keyframes sidebar-tooltip-in {
+  from { opacity: 0; transform: translateY(-50%) translateX(-4px); }
+  to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+/* Toast animations used by `components/Toast.tsx`. */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(16px); }
+}
+
+/* Generic fade + dialog entrance used by popovers and confirm dialogs. */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Hide scrollbar utility — used by the header's overflow-x nav row. */
+/* Declared as a Tailwind utility, not a plain class, so variants work.
+   As a bare `.scrollbar-none` rule Tailwind does not own the name and
+   `lg:scrollbar-none` silently generates nothing — the collapsed rail kept
+   its scrollbar and nobody got an error. */
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* System UI-monospace stack — distinct from `font-courier` (Courier
+   Prime), used for dense data readouts where the display font would
+   break the grid. Routes through the theme's mono stack so themes
+   with a different monospace (JetBrains Mono, IBM Plex Mono, etc.)
+   still apply here. */
+.font-mono-ui {
+  font-family: var(--theme-font-mono);
+}
+
+/* Subtle grain overlay for badges. */
+.grain {
+  position: relative;
+}
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  pointer-events: none;
+  background: repeating-conic-gradient(currentColor 0% 25%, #0000 0% 50%) 0 0 /
+    2px 2px;
+}
+
+/* RTL support — Arabic and any future right-to-left locale. The i18n provider
+   sets `dir` on <html>; Tailwind v4's logical spacing utilities (ms-/me-,
+   ps-/pe-) and logical properties then flip automatically. Scoped so the
+   default LTR layout is untouched. */
+html[dir="rtl"] {
+  direction: rtl;
+}
+
+/* ==================================================================
+   Quiet Violet — surface rules
+   ------------------------------------------------------------------
+   Formerly carried as a theme's `customCSS` string. Now plain CSS,
+   because there is only one surface.
+   ================================================================== */
+
+/* ---- The design system's display faces ---------------------------
+   The single biggest reason the dashboard read as "not mine": the DS
+   pins Collapse / Rules / Mondwest through Tailwind utility CLASSES,
+   which no variable reaches. Measured usage in the app's own pages:
+   font-mono 109x, font-mondwest 61x, font-sans 17x, font-expanded 2x. */
+
+/* Mondwest is used as a general UI face, not as display — so, sans. */
+.font-mondwest {
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+
+/* Rules Expanded / Compressed mark titles. Those take the serif. */
+.font-expanded,
+.font-compressed {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+/* Buttons shipped as bold mono at ~10.5px with wide tracking — the
+   strongest "terminal" cue in the UI. Labels are prose, so they move to
+   sans; code, logs and data keep mono, hence the scope. */
+:where(button, [role="button"], a[role="button"]).font-mono {
+  font-family: var(--font-sans);
+  letter-spacing: 0.01em;
+}
+
+/* Page titles carry the serif; labels, controls and data stay sans. */
+[data-hermes-page-title],
+.hermes-page-title {
+  font-family: var(--font-display);
+  font-weight: 300;
+  letter-spacing: 0;
+}
+
+/* ---- States ------------------------------------------------------ */
+
+/* One visible, non-colour focus ring everywhere. Colour alone never
+   marks focus — the ring has its own geometry. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+/* Controls get the AA-compliant boundary; cards keep the quiet one. */
+:where(input, select, textarea):not([type='checkbox']):not([type='radio']) {
+  border-color: var(--border-strong);
+}
+
+/* Placeholders are held to the body-text ratio. --text-tertiary measures
+   4.04:1 and would fail as copy the operator has to read. */
+::placeholder {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+/* ---- Scrollbars -------------------------------------------------- */
+/* Follow the surface instead of punching a bright hole in it. Standard
+   sizing — no reinvented affordance.
+
+   Inside `@layer base`, deliberately. Tailwind emits utilities into
+   `@layer utilities`, and an UNLAYERED rule beats a layered one no matter
+   how specific the layered one is — so an unlayered `*` here silently
+   defeated `scrollbar-none` everywhere it was used, including a variant
+   that was correctly generated and correctly applied to the element.
+   Nothing errors; the scrollbar just stays. */
+@layer base {
+  * {
+    scrollbar-color: var(--bg-hover) transparent;
+    scrollbar-width: thin;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--bg-hover);
+    border-radius: var(--radius-full);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+    background-clip: content-box;
+  }
+}
+
+/* ---- Motion ------------------------------------------------------ */
+/* State transitions report a change and then get out of the way. */
+@media (prefers-reduced-motion: no-preference) {
+  :where(a, button, [role='button'], input, select, textarea) {
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+}
+
+
+/* ---- Account menu motion ------------------------------------------------
+   The panel is anchored `bottom-full`, above the account row, so a bottom
+   transform-origin makes it unroll upward out of that row on the way in and
+   fold back down into it on the way out — open from the bottom, close from
+   the top.
+
+   Keyframes rather than a transition: the panel mounts on open, and a
+   transition has nothing to move from when the element's first frame is
+   already its final state. The exit needs the node to outlive the state
+   change, which the component handles by delaying unmount.
+
+   Duration comes from the token, so the reduced-motion block in tokens.css
+   shortens these too instead of leaving one animation at full length. */
+@keyframes hermes-menu-in {
+  from { opacity: 0; transform: scaleY(0.8) translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes hermes-menu-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: scaleY(0.8) translateY(4px); }
+}
+
+.hermes-menu-in,
+.hermes-menu-out {
+  transform-origin: bottom center;
+  will-change: transform, opacity;
+}
+
+.hermes-menu-in {
+  animation: hermes-menu-in var(--duration-fast) cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.hermes-menu-out {
+  animation: hermes-menu-out var(--duration-fast) cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* Motion is the whole point of these two, so honour the preference by
+   removing the travel rather than merely shortening it. */
+@media (prefers-reduced-motion: reduce) {
+  .hermes-menu-in,
+  .hermes-menu-out {
+    animation: none;
+  }
+}
+
+/* ---- Chat composer focus -------------------------------------------------
+   The composer is a bordered box with a textarea inside it. Left alone, the
+   global `:focus-visible` rule above draws a 2px accent outline on the field,
+   which lands *inside* that border and reads as a box within a box.
+
+   The field defers, and the container speaks for it. Both rules are unlayered
+   on purpose: the global rule they answer to is unlayered too, and a Tailwind
+   utility lives in `@layer utilities` — which loses to any unlayered rule no
+   matter how specific it is. `focus-visible:outline-none` on the element was
+   tried first and silently did nothing for exactly that reason.
+
+   Suppressing the outline globally (by moving the base rule into a layer) was
+   the other option and is not safe here: this build emits no `ring-*`
+   utilities at all, so every `focus-visible:ring-2` in the codebase renders
+   nothing and that outline is the only focus indicator those controls have. */
+#chat-composer:focus-visible {
+  outline: none;
+}
+
+/* One edge, not two. The extra 1px ring makes the state unmistakable without
+   adding a second concentric line the way an offset outline would. */
+.hermes-composer:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* ---- Composer popover motion --------------------------------------------
+   A short fade with a 4px lift, matching the reference's menus exactly
+   (`fadeIn 0.2s ease-out`).
+
+   Deliberately not `hermes-menu-in`: that one unrolls from its bottom edge,
+   which is right for the account menu because it grows out of the account row
+   it is attached to. These float above a button in the middle of a toolbar,
+   where an unroll reads as the panel stretching rather than appearing. */
+@keyframes hermes-popover-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.hermes-popover-in {
+  animation: hermes-popover-in 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hermes-popover-in {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Vendor button, themed.
+
+   `@nous-research/ui`'s Button draws its edge as a hard-coded inset bevel —
+   `inset -1px -1px 0 0 #00000080, inset 1px 1px 0 0 #ffffff80` — with no
+   border and no radius. Two literal colours, so it does not move with the
+   theme: on the light palette the white highlight vanishes into the surface
+   and the black shadow reads as grime. Next to `CommandPanelTrigger`
+   ("Find a session"), which is built from our tokens, the two looked like
+   controls from different applications.
+
+   Restyled to match that trigger: real border on --border-strong (the
+   control-boundary token DESIGN.md reserves for exactly this), --bg-tertiary
+   fill, our radius. The vendor's own text colour already resolves to
+   --text-primary, so type and icons are left alone.
+
+   Keyed on the bevel utility itself rather than a component class: it is the
+   thing being corrected, so a vendor restyle that drops the bevel also drops
+   this override instead of leaving it to fight a new design.
+   --------------------------------------------------------------------------- */
+button[class*="shadow-[inset_-1px_-1px_0_0_#00000080"] {
+  /* The vendor ships `line-height: 0`, so a label contributes almost no height
+     and the box is essentially its own padding. An icon then contributes its
+     full height on top, which is why "Refresh Models" measured 52px next to
+     Cancel and Switch at 38.8px — the 13.2px gap was exactly the 13.1px svg.
+     Restoring a real line box and trimming the padding to match keeps the
+     height the buttons already had (38.6px) and makes it independent of
+     whether the button carries an icon. */
+  line-height: 1.15;
+  padding-block: 10px;
+  box-shadow: none;
+  border: 1px solid var(--border-strong);
+  /* rounded-md, matching CommandPanelTrigger exactly — the whole point is that
+     these two read as one control family. --radius (0.5rem) is a step larger
+     and left the vendor buttons visibly softer beside it. */
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+button[class*="shadow-[inset_-1px_-1px_0_0_#00000080"]:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+button[class*="shadow-[inset_-1px_-1px_0_0_#00000080"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* The vendor's active state inverts the whole button via a filter, which on a
+   bordered control flashes the border too. A background step says the same
+   thing without the strobe. */
+button[class*="shadow-[inset_-1px_-1px_0_0_#00000080"]:active:not(:disabled) {
+  filter: none;
+  background: var(--bg-tertiary);
+}
