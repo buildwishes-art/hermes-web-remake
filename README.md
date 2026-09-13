@@ -63,13 +63,35 @@ touches across the remaining pages.
 All 17 locales under `src/i18n/` are intact — they were trimmed of the keys
 belonging to deleted UI, not dropped.
 
-### Not included: the `team_ai` panel
+### Not built in: the `team_ai` panel — install it instead
 
-The multi-model panel surface built on top of this — a composer control that
-puts several models on one message, racing or in conversation — is deliberately
-absent. Five files were removed and their wiring in `ComposerModelButton.tsx`
-and `ChatTranscript.tsx` unpicked; see [FORK.md](FORK.md) for exactly what and
-what was deliberately kept.
+The multi-model panel surface — a composer control that puts several models on
+one message, racing or in conversation — is not in this tree. It lives as a
+Hermes plugin: **[buildwishes-art/hermes-team-ai](https://github.com/buildwishes-art/hermes-team-ai)**.
+Install it and the composer gains a Team control, the dialog, and per-speaker
+bubbles for the panel's results.
+
+Five files were removed from this repo and their wiring in
+`ComposerModelButton.tsx` and `ChatTranscript.tsx` unpicked; see
+[FORK.md](FORK.md) for exactly what, and what was deliberately kept.
+
+### New: the chat surface is pluggable (SDK 1.3.0)
+
+Making that plugin possible meant giving the chat surface extension points it
+did not have. A plugin can now:
+
+| | |
+|---|---|
+| `chat:composer` slot | one compact control in the composer's own row, beside the model and Build/Plan buttons |
+| `chat:top` / `chat:bottom` | above the transcript and below the composer. These were *documented* slots that this build rendered nowhere — they went with the deleted xterm page and nothing re-hung them |
+| `registerSendTransform` | rewrite the outgoing message. Narrow on purpose: message in, message out, no session and no way to cancel a send. One that throws or empties the message is skipped |
+| `registerToolRenderer` | render one tool's results instead of the generic one-line chip. Unclaimed tools fall back |
+
+Also fixed while in there: `sdk.d.ts` declared `registerSlot(slot, name, …)`
+while `slots.ts` implements `registerSlot(plugin, slot, …)`. Nothing in-repo
+used slots, so nothing caught it — an external author following the published
+types would have registered into a slot named after their plugin and never
+rendered.
 
 ### Known leftovers
 

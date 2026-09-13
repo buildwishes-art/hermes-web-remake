@@ -38,6 +38,8 @@ import { Separator } from "@nous-research/ui/ui/components/separator";
 import { Tabs, TabsList, TabsTrigger } from "@nous-research/ui/ui/components/tabs";
 import { useI18n } from "@/i18n";
 import { registerSlot, PluginSlot } from "./slots";
+import { registerSendTransform, unregisterSendTransform } from "./transforms";
+import { registerToolRenderer, unregisterToolRenderers } from "./toolRenderers";
 
 // ---------------------------------------------------------------------------
 // Plugin registry — plugins call register() to add their component.
@@ -103,7 +105,7 @@ export function getRegisteredCount(): number {
  * Exposed at runtime as ``window.__HERMES_PLUGIN_SDK__.sdkVersion`` so a
  * plugin (or a future host-side compatibility gate) can read it.
  */
-export const SDK_CONTRACT_VERSION = "1.1.0";
+export const SDK_CONTRACT_VERSION = "1.3.0";
 
 // Window globals for the plugin SDK are declared in ``plugins/sdk.d.ts`` —
 // the single source of truth for the public contract. Don't redeclare them
@@ -113,6 +115,14 @@ export function exposePluginSDK() {
   window.__HERMES_PLUGINS__ = {
     register: registerPlugin,
     registerSlot,
+    // Lets a plugin that drew a control in `chat:composer` actually change
+    // the message that control claims to affect. See plugins/transforms.ts.
+    registerSendTransform,
+    unregisterSendTransform,
+    // Lets a plugin say how its own tool results should look, instead of
+    // every plugin tool collapsing to the generic one-line chip.
+    registerToolRenderer,
+    unregisterToolRenderers,
   };
 
   window.__HERMES_PLUGIN_SDK__ = {

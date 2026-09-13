@@ -83,8 +83,59 @@ export type BuildWsAuthParam = () => Promise<[string, string]>;
 export interface PluginRegistry {
   /** Register the plugin's main tab component by manifest name. */
   register(name: string, component: ComponentType<Record<string, never>>): void;
-  /** Register a component into a named host slot. */
-  registerSlot(slot: string, name: string, component: ComponentType): void;
+  /**
+   * Register a component into a named host slot.
+   *
+   * Argument order is (plugin, slot) — this declaration used to say
+   * (slot, name), the other way round from `slots.ts::registerSlot`, which is
+   * what actually runs. Nothing in-repo used slots, so nothing caught it; an
+   * external author following these types would have registered into a slot
+   * named after their plugin and never rendered.
+   */
+  registerSlot(plugin: string, slot: string, component: ComponentType): void;
+  /**
+   * Rewrite the chat message before it is sent (SDK 1.2.0).
+   *
+   * Transforms run in registration order on the text the composer is about to
+   * submit, after the built-in Build/Plan prefix. Slash commands never reach
+   * them. Re-registering the same plugin replaces its transform rather than
+   * stacking a second one.
+   *
+   * The contract is narrow on purpose: message in, message out. No session, no
+   * socket, no way to cancel the send. One that throws, returns a non-string,
+   * or empties the message is skipped and the previous text stands — a broken
+   * plugin must not be able to swallow what someone typed.
+   *
+   * Pair it with a `chat:composer` slot control, so the effect is visible and
+   * switchable rather than silently applied to every message.
+   */
+  registerSendTransform(plugin: string, fn: (text: string) => string): void;
+  /** Drop a plugin's transform. */
+  unregisterSendTransform(plugin: string): void;
+  /**
+   * Render one tool's results yourself (SDK 1.3.0).
+   *
+   * Claims a tool by name. The component is handed
+   * `{ name, text, output, running }` — the invocation line, what the tool
+   * returned, and whether it is still running — and renders in place of the
+   * built-in one-line chip for that tool's turns only.
+   *
+   * Use it when a result has structure worth seeing. Anything unclaimed, and
+   * anything whose renderer throws, falls back to the chip: a plugin must not
+   * be able to make a turn unreadable.
+   */
+  registerToolRenderer(
+    plugin: string,
+    tool: string,
+    component: ComponentType<{
+      name: string;
+      text: string;
+      output?: string;
+      running?: boolean;
+    }>,
+  ): void;
+  /** Drop every renderer this plugin claimed. */
+  unregisterToolRenderers(plugin: string): void;
 }
 
 // ---------------------------------------------------------------------------

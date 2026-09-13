@@ -53,8 +53,14 @@ import React, { Fragment, useEffect, useState } from "react";
  *  - `config:bottom`    — bottom of /config page
  *  - `env:top`          — top of /env (Keys) page
  *  - `env:bottom`       — bottom of /env (Keys) page
- *  - `chat:top`         — top of /chat page (above the composer, when embedded chat is on)
- *  - `chat:bottom`      — bottom of /chat page
+ *  - `chat:top`         — above the transcript, under the page header
+ *  - `chat:bottom`      — below the composer
+ *  - `chat:composer`    — the composer's own control row, beside the model
+ *                         and Build/Plan buttons. Keep what you put here to
+ *                         one compact control: the row is shared with the
+ *                         built-ins and wraps on a narrow window. Pair it
+ *                         with `registerSendTransform` when the control is
+ *                         meant to change what gets sent.
  */
 export const KNOWN_SLOT_NAMES = [
   // Shell-wide
@@ -87,6 +93,7 @@ export const KNOWN_SLOT_NAMES = [
   "env:bottom",
   "chat:top",
   "chat:bottom",
+  "chat:composer",
 ] as const;
 
 export type KnownSlotName = (typeof KNOWN_SLOT_NAMES)[number];

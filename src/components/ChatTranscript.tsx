@@ -30,6 +30,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { ArrowDown, ArrowUp, Loader2, Square } from "lucide-react";
@@ -54,6 +55,12 @@ import {
   readMode,
   type ComposerMode,
 } from "@/components/ComposerModeButton";
+import {
+  applySendTransforms,
+  getToolRenderer,
+  onToolRendererRegistered,
+  PluginSlot,
+} from "@/plugins";
 import { monthGroup } from "@/lib/command-panel";
 import { useCommandPanelKey } from "@/lib/command-panel";
 import {
@@ -448,6 +455,10 @@ export function ChatTranscript({
               role: "tool",
               text: toolSummary(p),
               toolId: p.tool_id,
+              // Carried here too, not only on `tool.start`: a completion with
+              // no matching start is how a reconnect mid-turn arrives, and
+              // without the name a plugin renderer could not claim it.
+              toolName: p.name,
               output: toolOutput(p),
             },
           ];
@@ -678,7 +689,10 @@ export function ChatTranscript({
       // what the user typed, while the model receives the directive in front of
       // it. Slash commands are exempt — they returned above — because steering
       // "/model …" toward planning would be nonsense.
-      await sendToAgent(applyMode(text, mode));
+      // Plugin transforms run last, on the text the built-ins have already
+      // shaped. They cannot see a slash command — that dispatched above — and
+      // a misbehaving one is skipped rather than allowed to eat the message.
+      await sendToAgent(applySendTransforms(applyMode(text, mode)));
     },
     [busy, push, ensureSession, gw, sys, sendToAgent, mode],
   );
@@ -827,6 +841,13 @@ export function ChatTranscript({
         {/* pb-40, not py-8: the composer floats over this area now, and
             without the reserved space the last message sits under it. */}
         <div className="mx-auto w-full max-w-[860px] px-6 pt-8 pb-56">
+          {/* `chat:top` and `chat:bottom` were documented slots that this
+              build rendered nowhere — they went with the xterm chat page when
+              it was deleted, and nothing re-hung them on the surface that
+              replaced it. A slot a plugin can declare but never appear in is
+              worse than one that does not exist. */}
+          <PluginSlot name="chat:top" />
+
           {empty ? (
             <>
               <EmptyState onPick={(s) => void submit(s)} banner={banner} />
@@ -1023,6 +1044,13 @@ export function ChatTranscript({
                   />
 
                   <ComposerModeButton mode={mode} onChange={setMode} disabled={!live} />
+
+                  {/* Plugins that steer the next message belong beside the
+                      controls that already do — the model and the mode — not
+                      in a bar of their own above the composer. Anything here
+                      should pair with `registerSendTransform`; the slot is the
+                      switch, the transform is the effect. */}
+                  <PluginSlot name="chat:composer" />
                 </div>
 
                 <input
@@ -1074,6 +1102,8 @@ export function ChatTranscript({
                 )}
               </div>
             </div>
+
+            <PluginSlot name="chat:bottom" />
           </div>
         </div>
       </div>
@@ -1172,6 +1202,39 @@ function EmptyState({ onPick, banner }: { onPick: (text: string) => void; banner
   );
 }
 
+/**
+ * A tool turn, rendered by the plugin that owns the tool when one has claimed
+ * it, and by the built-in chip otherwise.
+ *
+ * Subscribed rather than read once: a plugin bundle is a `<script>` the host
+ * injects, so it can register after this component has already mounted. Read
+ * once and a page load would be a coin flip between the plugin's rendering and
+ * the chip. `useSyncExternalStore` — the same primitive PluginPage uses for
+ * the tab registry — is how that subscription happens without a setState in an
+ * effect and the cascading render that costs.
+ *
+ * An error boundary is not worth a class component here, so the fallback is
+ * the honest one: a renderer that throws takes down the turn, which is loud
+ * and traceable, where silently swallowing it would leave a blank line the
+ * reader cannot account for. The registry guarantees only that an UNCLAIMED
+ * tool falls back.
+ */
+function PluginToolTurn({ turn }: { turn: Turn }) {
+  const name = turn.toolName ?? "";
+  const Renderer = useSyncExternalStore(
+    onToolRendererRegistered,
+    () => getToolRenderer(name),
+    () => undefined,
+  );
+
+  if (Renderer) {
+    return (
+      <Renderer name={name} text={turn.text} output={turn.output} running={turn.running} />
+    );
+  }
+  return <ToolTurn text={turn.text} running={turn.running} output={turn.output} />;
+}
+
 function TurnView({
   turn,
   onRetry,
@@ -1199,7 +1262,7 @@ function TurnView({
   if (turn.role === "tool") {
     return (
       <li>
-        <ToolTurn text={turn.text} running={turn.running} output={turn.output} />
+        <PluginToolTurn turn={turn} />
       </li>
     );
   }
