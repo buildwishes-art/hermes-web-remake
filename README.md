@@ -4,8 +4,83 @@ The Hermes Agent web dashboard, standalone — configuration, API keys, sessions
 and the chat surface, without the Python backend in the tree.
 
 Lifted from [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)
-(MIT, © 2025 Nous Research). **[FORK.md](FORK.md) lists every change made to
-this copy**, including what was removed and what was deliberately kept.
+(MIT, © 2025 Nous Research), then reworked. The section below says exactly how
+it differs; [FORK.md](FORK.md) covers the packaging details of making it
+standalone.
+
+---
+
+## How this differs from upstream
+
+Baseline: upstream commit **`ee742fe1`**. Against it, `web/` here is
+**70 files changed — 28 deleted, 42 modified — plus 29 new files**
+(+1,225 / −9,627 lines before the new files are counted).
+
+### New — the chat surface this repo exists for
+
+Upstream's chat tab is an xterm terminal wired to a PTY. It was replaced with a
+message UI that talks to the gateway's JSON-RPC socket directly.
+
+| | |
+|---|---|
+| `ChatTranscript.tsx` (+ test) | the transcript itself: streaming deltas, tool lifecycle, approval and clarify prompts, resume |
+| `ChatWebPage.tsx` | the page; owns URL reading so the transcript stays router-free |
+| `ChatPrompt.tsx` | blocking approval / clarify cards |
+| `ToolTurn.tsx` | a tool call as one quiet openable line instead of a bordered wall of monospace |
+| `MessageActions.tsx`, `UserMessageActions.tsx` | copy / TTS / 👍 / 👎 / retry, revealed on hover |
+| `ComposerModelButton.tsx` | current model + reasoning effort, in the composer rather than a settings page two clicks away |
+| `ComposerModeButton.tsx` | Build / Plan, applied as a prefix on the outgoing message |
+| `ComposerAddMenu.tsx` | attachments and the slash hand-off |
+| `SidebarRecents.tsx`, `SidebarUserMenu.tsx`, `SessionRowMenu.tsx` (+ tests) | the rebuilt sidebar |
+| `CommandPanel.tsx`, `CommandPanelTrigger.tsx`, `lib/command-panel.ts` (+ tests) | session palette on ⌘K / Ctrl+K |
+| `lib/appearance.ts` (+ test) | light / dark / system, replacing the deleted preset engine |
+| `styles/tokens.css` (+ test) | the design tokens everything above is built on |
+| `DESIGN.md`, `PRODUCT.md` | what the design system actually is, written against what was built |
+
+### Deleted
+
+- **The xterm chat page** — `pages/ChatPage.tsx` (1,988 lines) and its test,
+  plus `components/ChatSidebar.tsx` (+ test), `ChatSessionList.tsx`,
+  `SidebarFooter.tsx`
+- **The theme preset engine** — all of `src/themes/` (`context`, `fonts`,
+  `presets`, `types`, `index`), and with it `ThemeSwitcher.tsx`
+- `LanguageSwitcher.tsx`, `ReasoningPicker.tsx` — folded into the sidebar menu
+  and the composer's model button
+- `pages/DocsPage.tsx`
+- Support modules that only the deleted page used: `chat-activation`,
+  `events-reconnect`, `keyboard-inset`, `pty-mobile-input`, `pty-scroll`,
+  `reasoning-effort` (each with its test), and
+  `chat-sidebar-session-params.test`
+
+### Modified
+
+`App.tsx` (~1,100 lines changed — the shell and nav rebuild) and `index.css`
+(+415, composer and token wiring) carry most of it. Then
+`PageHeaderProvider.tsx`, `ModelPickerDialog.tsx`, `SessionsPage.tsx`,
+`SkillsPage.tsx`, `ModelsPage.tsx`, `lib/api.ts`, `main.tsx`, and smaller
+touches across the remaining pages.
+
+All 17 locales under `src/i18n/` are intact — they were trimmed of the keys
+belonging to deleted UI, not dropped.
+
+### Not included: the `team_ai` panel
+
+The multi-model panel surface built on top of this — a composer control that
+puts several models on one message, racing or in conversation — is deliberately
+absent. Five files were removed and their wiring in `ComposerModelButton.tsx`
+and `ChatTranscript.tsx` unpicked; see [FORK.md](FORK.md) for exactly what and
+what was deliberately kept.
+
+### Known leftovers
+
+`lib/pty-composition`, `pty-reconnect`, `pty-keyboard-shortcuts`,
+`pty-resume-loading` and `pty-resume-sanitizer` are **dead code**. Nothing
+outside that cluster imports any of them — they were orphaned when the xterm
+page went, and their tests still pass, which is why nothing flagged them. The
+one surviving xterm consumer is `HermesConsoleModal.tsx`, which uses
+`styles/terminal.ts`.
+
+---
 
 ## Stack
 

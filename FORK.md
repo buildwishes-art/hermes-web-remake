@@ -2,8 +2,14 @@
 
 This is the `web/` dashboard of [Hermes Agent](https://github.com/NousResearch/hermes-agent)
 (MIT, © 2025 Nous Research), lifted out into a standalone repository so the UI
-can be reworked without carrying the Python backend. The upstream `LICENSE` is
-included unchanged, as MIT requires.
+can be reworked without carrying the Python backend.
+
+`LICENSE` keeps the upstream copyright notice — MIT requires it to travel with
+the code — and adds a second line for the work done in this repo. Both holders
+are named; neither replaces the other. The README says which parts are which.
+
+The README covers what differs from upstream. This file covers the mechanics of
+making it stand alone.
 
 Everything below is a change made to this copy. Nothing else in `src/` was
 touched — if it is not on this list, it is upstream code.
