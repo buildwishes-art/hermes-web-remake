@@ -147,6 +147,12 @@ export function usePlugins() {
         notifyPluginRegistry();
         queueMicrotask(() => {
           if (getPluginComponent(manifest.name)) return;
+          // A slot-only plugin never calls `register(name, Component)` — it
+          // has no tab to register. The manifest says so outright via
+          // `tab.hidden` plus `slots`, and slots.ts names that case as
+          // supported, so flagging it NO_REGISTER marked a correctly-built
+          // plugin permanently broken.
+          if (manifest.tab?.hidden && manifest.slots?.length) return;
           setPluginLoadError(manifest.name, "NO_REGISTER");
         });
       };
